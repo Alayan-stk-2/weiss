@@ -11,7 +11,7 @@
 
 
 enum { QUIET, NOISY };
-enum { ENPAS, PROMO, PROMOCAP };
+enum { ENPAS, PROMO };
 
 static int MvvLvaScores[PIECE_NB][PIECE_NB];
 
@@ -39,21 +39,18 @@ INLINE void AddMove(const Position *pos, MoveList *list, const int from, const i
 
     // Add scores to help move ordering based on search history heuristics / mvvlva
     if (type == NOISY)
-        *moveScore = MvvLvaScores[captured][pos->board[from]] + 1000000;
+        *moveScore = MvvLvaScores[captured][pos->board[from]];
 
     if (type == QUIET) {
         if (pos->searchKillers[0][pos->ply] == move)
             *moveScore = 900000;
         else if (pos->searchKillers[1][pos->ply] == move)
             *moveScore = 800000;
-        else if (promo)
-            *moveScore = 700000;
         else
             *moveScore = pos->searchHistory[pos->board[from]][to];
     }
 
-    list->moves[list->count].move = move;
-    list->count++;
+    list->moves[list->count++].move = move;
 }
 INLINE void AddSpecialPawn(const Position *pos, MoveList *list, const int from, const int to, const int color, const int type) {
 
@@ -63,16 +60,9 @@ INLINE void AddSpecialPawn(const Position *pos, MoveList *list, const int from, 
     if (type == ENPAS) {
         int move = MOVE(from, to, EMPTY, EMPTY, FLAG_ENPAS);
         list->moves[list->count].move = move;
-        list->moves[list->count].score = 105 + 1000000;
-        list->count++;
+        list->moves[list->count++].score = 105;
     }
     if (type == PROMO) {
-        AddMove(pos, list, from, to, makePiece(color, QUEEN ), FLAG_NONE, QUIET);
-        AddMove(pos, list, from, to, makePiece(color, KNIGHT), FLAG_NONE, QUIET);
-        AddMove(pos, list, from, to, makePiece(color, ROOK  ), FLAG_NONE, QUIET);
-        AddMove(pos, list, from, to, makePiece(color, BISHOP), FLAG_NONE, QUIET);
-    }
-    if (type == PROMOCAP) {
         AddMove(pos, list, from, to, makePiece(color, QUEEN ), FLAG_NONE, NOISY);
         AddMove(pos, list, from, to, makePiece(color, KNIGHT), FLAG_NONE, NOISY);
         AddMove(pos, list, from, to, makePiece(color, ROOK  ), FLAG_NONE, NOISY);
@@ -175,11 +165,11 @@ INLINE void GenPawn(const Position *pos, MoveList *list, const int color, const 
     // Promoting captures
     while (lPromoCap) {
         sq = PopLsb(&lPromoCap);
-        AddSpecialPawn(pos, list, relBackward(color, sq, 7), sq, color, PROMOCAP);
+        AddSpecialPawn(pos, list, relBackward(color, sq, 7), sq, color, PROMO);
     }
     while (rPromoCap) {
         sq = PopLsb(&rPromoCap);
-        AddSpecialPawn(pos, list, relBackward(color, sq, 9), sq, color, PROMOCAP);
+        AddSpecialPawn(pos, list, relBackward(color, sq, 9), sq, color, PROMO);
     }
     // Promotions
     while (promotions) {
@@ -203,7 +193,7 @@ INLINE void GenPawn(const Position *pos, MoveList *list, const int color, const 
     }
 }
 
-// Knight, bishop, rook and queen
+// Knight, bishop, rook, queen, king
 INLINE void GenPieceType(const Position *pos, MoveList *list, const int color, const int type, const int pt) {
 
     int sq;
