@@ -14,10 +14,12 @@
 // Eval bit masks
 static bitboard PassedMask[2][64];
 static bitboard IsolatedMask[64];
+static bitboard StackedMask[64];
 
 // Various bonuses and maluses
 static const int PawnPassed[8] = { 0, S(5, 5), S(10, 10), S(20, 20), S(35, 35), S(60, 60), S(100, 100), 0 };
 static const int PawnIsolated = S(-10, -10);
+static const int PawnStacked  = S(-10, -10);
 
 static const int  RookOpenFile = S(10, 10);
 static const int QueenOpenFile = S(5, 5);
@@ -60,11 +62,14 @@ CONSTR InitEvalMasks() {
     for (sq = A2; sq <= H7; ++sq) {
 
         // In front
-        for (tsq = sq + 8; tsq <= H8; tsq += 8)
+        for (tsq = sq + 8; tsq <= H8; tsq += 8) {
             PassedMask[WHITE][sq] |= (1ULL << tsq);
-
-        for (tsq = sq - 8; tsq >= A1; tsq -= 8)
+            StackedMask[sq] |= (1ULL << tsq);
+        }
+        for (tsq = sq - 8; tsq >= A1; tsq -= 8) {
             PassedMask[BLACK][sq] |= (1ULL << tsq);
+            StackedMask[sq] |= (1ULL << tsq);
+        }
 
         // Left side
         if (fileOf(sq) > FILE_A) {
@@ -149,6 +154,9 @@ INLINE int evalPawns(const EvalInfo *ei, const Position *pos, const int pawns, c
     for (int i = 0; i < pos->pieceCounts[pawns]; ++i) {
         int sq = pos->pieceList[pawns][i];
 
+        // Doubled pawn penalty
+        if (StackedMask[sq] & ei->pawnsBB[color])
+            eval += PawnStacked;
         // Isolation penalty
         if (!(IsolatedMask[sq] & ei->pawnsBB[color]))
             eval += PawnIsolated;
